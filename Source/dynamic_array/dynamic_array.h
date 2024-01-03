@@ -21,6 +21,8 @@ struct dynamic_array_t
     void(*free)(void*); ///< OPTIONAL function to add your own free
     void*(*malloc)(size_t); ///< OPTIONAL function to add your own malloc
     void*(*realloc)(void*,size_t); ///< OPTIONAL function to add your own realloc
+    size_t loop_count; ///< used during loop functions.  Similar to position but not affected by loopback.
+    ///Requires dynamic_array_loop_initial() to be called first
 };
 
 typedef struct dynamic_array_t dynamic_array_t;
@@ -71,6 +73,13 @@ size_t dynamic_array_insert_item(dynamic_array_t* darray, int location, void* it
 
 size_t dynamic_array_set_position(dynamic_array_t* darray, size_t absolute_position);
 
+size_t dynamic_array_update_item(dynamic_array_t* darray, void* item);
+
+size_t dynamic_array_shift_position(dynamic_array_t* darray, int location);
+
+bool dynamic_array_while_item(dynamic_array_t* darray, void* ret_current_item);
+
+bool dynamic_array_for_each(dynamic_array_t* darray, size_t* counter, void* ret_current_item);
 
 #ifdef __cplusplus
 }

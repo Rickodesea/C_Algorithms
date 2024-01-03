@@ -176,3 +176,39 @@ size_t dynamic_array_set_position(dynamic_array_t* darray, size_t absolute_posit
     darray->position = get_position(darray, 0);
     return darray->position;
 }
+
+size_t dynamic_array_update_item(dynamic_array_t* darray, void* item)
+{
+    void* current_item = dynamic_array_get_item(darray, 0, NULL);
+    memcpy(current_item, item, darray->mem_size);
+    return get_position(darray, 0);
+}
+
+size_t dynamic_array_shift_position(dynamic_array_t* darray, int location)
+{
+    darray->position = get_position(darray, location);
+    return darray->position;
+}
+
+bool dynamic_array_for_each(dynamic_array_t* darray, size_t* counter, void* ret_current_item)
+{
+    assert(counter);
+    if(counter[0] < darray->length)
+    {
+        dynamic_array_get_item(darray, 0, ret_current_item);
+        dynamic_array_shift_position(darray, +1);
+        counter[0] ++;
+        return true;
+    }
+    return false;
+}
+
+bool dynamic_array_while_item(dynamic_array_t* darray, void* ret_current_item)
+{
+    if(dynamic_array_is_item_available(darray))
+    {
+        dynamic_array_get_item(darray, 0, ret_current_item);
+        return true;
+    }
+    return false;
+}

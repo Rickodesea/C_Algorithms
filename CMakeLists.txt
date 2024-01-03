@@ -10,7 +10,7 @@ add_compile_definitions($<$<CONFIG:Release>:NDEBUG>)
 
 include_directories(Source)
 
-add_executable(dynamic-array
-    Source/dynamic_array/c-algorithm-dynamic-array.c
-    Source/dynamic_array/dynamic-array-main.c
+add_executable(dynamic_array
+    Source/dynamic_array/dynamic_array.c
+    Source/dynamic_array/main.c
 )

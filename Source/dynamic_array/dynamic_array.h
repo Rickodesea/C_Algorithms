@@ -9,77 +9,75 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-/// @brief Core Structure
+
+///The dynamic array data type.
+typedef struct dynamic_array_t dynamic_array_t; 
+
+/// The dynamic array data type.
+/// All dynamic array function requires a pointer to this data.
 struct dynamic_array_t
 {
-    size_t position; ///< READONLY internal iterator.  All array item access are relative to this value.
-    void*  array; ///< READONLY internal array (must be heap allocated to use add and delete functions...for set or get functions, stack arrays can be used as well)
-    void** array_ptr; ///< READONLY Holds the address of the variable that contains the heap array
-    size_t length; ///< READONLY length of the array interms of items
-    size_t mem_size; ///<  READONLY the size of an item.  All items must be equal in size.
-    bool   loopback; ///<  READONLY when travelling the array, (true) loop to the other end when reach the end or the beginning of the array or (false) clamp to the last or first item.
-    void(*free)(void*); ///< OPTIONAL function to add your own free
-    void*(*malloc)(size_t); ///< OPTIONAL function to add your own malloc
-    void*(*realloc)(void*,size_t); ///< OPTIONAL function to add your own realloc
-    size_t loop_count; ///< used during loop functions.  Similar to position but not affected by loopback.
-    ///Requires dynamic_array_loop_initial() to be called first
+    /// The current length of the array.
+    size_t length;
+
+    /// The current heap allocated array pointer value.
+    void*  array;
+
+    /// The constant size of an individual item in the array.
+    /// This is the only required input.  It is required at initialization.
+    /// Once it is set, it MUST NOT change!
+    size_t mem_size;
+
+    // OPTIONAL
+
+    void(*free)(void*); ///< An alternative free
+    void*(*malloc)(size_t); ///< An alternative malloc
+    void*(*realloc)(void*,size_t); ///< An alternative realloc
+
+    /// If provided, keeps the variable updated 
+    /// with the latest value of @ref array.
+    void** user_array_var;
+
+    /// How much item slots to append per allocation.  
+    /// The default is 8.
+    unsigned int length_per_alloc;
+
+    // INTERNAL
+
+    /// The actual amount of item slots created.
+    size_t capacity;
 };
 
-typedef struct dynamic_array_t dynamic_array_t;
+#define DYNAMIC_ARRAY_DEFAULT_LENGTH_PER_ALLOC 8
+#define DYNAMIC_ARRAY_DEFAULT_FREE free
+#define DYNAMIC_ARRAY_DEFAULT_MALLOC malloc
+#define DYNAMIC_ARRAY_DEFAULT_REALLOC realloc
 
-/// @brief Sets up the dynamic array structure.
-/// @param heap_array_variable_ptr ///< pointer to the variable that contains the array
-/// @param array_length_per_item ///< the number of items currently in the array
-/// @param uniform_item_size ///< the size of an item
-/// @param loopback_search_method ///< whether or not loop method is to be use when requested index goes beyond the array length
-/// @param free_func ///< optional function to add your own free
-/// @param malloc_func ///< optional function to add your own malloc
-/// @param realloc_func ///< optional function to add your own malloc
-/// @return 
-dynamic_array_t dynamic_array_initialize(
-    void**  heap_array_variable_ptr,
-    size_t array_length_per_item,
-    size_t uniform_item_size,
-    bool   loopback_search_method,
-    void(*free_func)(void*),
-    void*(*malloc_func)(size_t),
-    void*(*realloc_func)(void*,size_t)
-);
+#define DYNAMIC_ARRAY_MIN_LENGTH_PER_ALLOC 2
 
-/// @brief Does the array has any items
-bool dynamic_array_is_item_available(dynamic_array_t* darray);
+/// @brief Sets up the internal structures based on the input.
+///        This function call is required once and before all other functions.
+/// @return Whether or not the dynamic array was initialized successfully.
+bool dynamic_array_init(dynamic_array_t* da);
 
-/// @brief Gets an item from the array relative to the current position of the dynamic array structure
-/// @param darray 
-/// @param location OPTIONAL Relative to the current position of the dynamic array structure.
-///                 Can be positive (next), negative (previous) or 0 (current).  0 is the default.
-/// @param ret_item The item returned.
-/// @return The item returned.
-void* dynamic_array_get_item(dynamic_array_t* darray, int location, void* ret_item);
+/// Checks if the dynamic array is empty.
+bool dynamic_array_empty(dynamic_array_t* da);
 
-/// @brief Removes an item from the array relative to the current position of the dynamic array structure.
-///        The array is shrunk and if it is empty, the array is freed.
-/// @param darray 
-/// @param location OPTIONAL Relative to the current position of the dynamic array structure.
-///                 Can be positive (next), negative (previous) or 0 (current). 0 is the default.
-/// @param ret_deleted Optionally the returned deleted item.  The item is not processed in any way by this function.
-///         It's the user's responsibility to clean it up.
-void dynamic_array_delete_item(dynamic_array_t* darray, int location, void* ret_deleted);
+size_t dynamic_array_length(dynamic_array_t* da);
 
+void* dynamic_array_array(dynamic_array_t* da);
 
-size_t dynamic_array_append_item(dynamic_array_t* darray, void* item);
+void dynamic_array_fit(dynamic_array_t* da);
 
-size_t dynamic_array_insert_item(dynamic_array_t* darray, int location, void* item);
+size_t dynamic_array_resolve_position(dynamic_array_t* da, long long rel_pos);
 
-size_t dynamic_array_set_position(dynamic_array_t* darray, size_t absolute_position);
+void* dynamic_array_get_item(dynamic_array_t* da, long long rel_pos, void* ret_item);
 
-size_t dynamic_array_update_item(dynamic_array_t* darray, void* item);
+void dynamic_array_append_item(dynamic_array_t* da, void* item);
 
-size_t dynamic_array_shift_position(dynamic_array_t* darray, int location);
+void dynamic_array_insert_item(dynamic_array_t* da, long long rel_pos, void* item);
 
-bool dynamic_array_while_item(dynamic_array_t* darray, void* ret_current_item);
-
-bool dynamic_array_for_each(dynamic_array_t* darray, size_t* counter, void* ret_current_item);
+void* dynamic_array_delete_item(dynamic_array_t* da, long long rel_pos, void* ret_item);
 
 #ifdef __cplusplus
 }

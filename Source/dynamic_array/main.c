@@ -15,17 +15,16 @@ int main()
         printf("adding...%d\n", array[i]);
     }
 
-    dynamic_array_t darray = dynamic_array_initialize(
-        (void**)&array,
-        count,
-        sizeof(int),
-        true,
-        NULL, //default standard free
-        NULL, //default standard malloc
-        NULL  //default standard realloc
-    );
+    //input
+    dynamic_array_t darray = {};
+    darray.mem_size = sizeof(int);
+    darray.array  = array; //set the current array but will be updated by darray
+    darray.length = count; //set the current length but will be updated by darray
+    darray.user_array_var = (void**)&array; //ask darray to update the variable `array` with the latest pointer of the array
     
-    while(dynamic_array_is_item_available(&darray))
+    dynamic_array_init(&darray); //this sets up the internal structures based on the input
+
+    while(false == dynamic_array_empty(&darray))
     {
         int* item_a; //one way of getting the same item
         int  item_b; //another way to get the same item
@@ -36,7 +35,7 @@ int main()
         printf("...deleted...%d\n", item_c);
     }
 
-    while(darray.length < 10)
+    while(dynamic_array_length(&darray) < 10)
     {
         int item = rand();
         dynamic_array_append_item(&darray, &item);
@@ -50,10 +49,9 @@ int main()
     }
 
     int item_insert;
-    dynamic_array_set_position(&darray, 5);
     printf("goto absolute position %d and insert item(s)\n", 5);
     item_insert = rand();
-    dynamic_array_insert_item(&darray, 0, &item_insert);
+    dynamic_array_insert_item(&darray, 5, &item_insert);
 
     printf("updated array:\n");
     for(int i = 0; i < darray.length; i++)
@@ -61,10 +59,9 @@ int main()
         printf("%2d# item %d\n", i, array[i]);
     }
 
-    dynamic_array_set_position(&darray, 7);
     printf("goto absolute position %d and insert item(s)\n", 7);
     item_insert = rand();
-    dynamic_array_insert_item(&darray, 0, &item_insert);
+    dynamic_array_insert_item(&darray, 7, &item_insert);
 
     printf("updated array:\n");
     for(int i = 0; i < darray.length; i++)
@@ -72,12 +69,11 @@ int main()
         printf("%2d# item %d\n", i, array[i]);
     }
 
-    dynamic_array_set_position(&darray, 8);
     printf("goto absolute position %d and insert item(s)\n", 8);
     item_insert = rand();
-    dynamic_array_insert_item(&darray, 0, &item_insert);
+    dynamic_array_insert_item(&darray, 8, &item_insert);
     item_insert = rand();
-    dynamic_array_insert_item(&darray, 0, &item_insert);
+    dynamic_array_insert_item(&darray, 8, &item_insert);
 
     printf("updated array:\n");
     for(int i = 0; i < darray.length; i++)
@@ -85,7 +81,6 @@ int main()
         printf("%2d# item %d\n", i, array[i]);
     }
 
-    dynamic_array_set_position(&darray, 0);
     printf("goto absolute position %d and insert item(s)\n", 0);
     item_insert = rand();
     dynamic_array_insert_item(&darray, 0, &item_insert);
@@ -96,10 +91,9 @@ int main()
         printf("%2d# item %d\n", i, array[i]);
     }
 
-    dynamic_array_set_position(&darray, darray.length - 1);
-    printf("goto absolute position %lu and insert item(s)\n", darray.length - 1);
     item_insert = rand();
-    dynamic_array_insert_item(&darray, 0, &item_insert);
+    printf("goto absolute position %lu and insert %d\n", dynamic_array_resolve_position(&darray, -1), item_insert);
+    dynamic_array_insert_item(&darray, -1, &item_insert);
 
     printf("updated array:\n");
     for(int i = 0; i < darray.length; i++)
@@ -107,9 +101,8 @@ int main()
         printf("%2d# item %d\n", i, array[i]);
     }
 
-    dynamic_array_set_position(&darray, 4);
     printf("goto absolute position %d and delete item(s)\n", 4);
-    dynamic_array_delete_item(&darray, 0, NULL);
+    dynamic_array_delete_item(&darray, 4, NULL);
 
     printf("updated array:\n");
     for(int i = 0; i < darray.length; i++)
@@ -117,11 +110,10 @@ int main()
         printf("%2d# item %d\n", i, array[i]);
     }
 
-    dynamic_array_set_position(&darray, 3);
     printf("goto absolute position %d and delete item(s)\n", 3);
-    dynamic_array_delete_item(&darray, 0, NULL);
-    dynamic_array_delete_item(&darray, 0, NULL);
-    dynamic_array_delete_item(&darray, 0, NULL);
+    dynamic_array_delete_item(&darray, 3, NULL);
+    dynamic_array_delete_item(&darray, 3, NULL);
+    dynamic_array_delete_item(&darray, 3, NULL);
 
     printf("updated array:\n");
     for(int i = 0; i < darray.length; i++)
@@ -129,19 +121,8 @@ int main()
         printf("%2d# item %d\n", i, array[i]);
     }
 
-    dynamic_array_set_position(&darray, 8);
-    printf("goto absolute position %d and delete an item at relative %d positions\n", 8, -3);
-    dynamic_array_delete_item(&darray, -3, NULL);
-
-    printf("updated array:\n");
-    for(int i = 0; i < darray.length; i++)
-    {
-        printf("%2d# item %d\n", i, array[i]);
-    }
-
-    dynamic_array_set_position(&darray, 1);
-    printf("goto absolute position %d and delete an item at relative %d positions\n", 1, +2);
-    dynamic_array_delete_item(&darray, +2, NULL);
+    printf("goto absolute position %lu and delete an item(s)\n", dynamic_array_resolve_position(&darray, -1));
+    dynamic_array_delete_item(&darray, -1, NULL);
 
     printf("updated array:\n");
     for(int i = 0; i < darray.length; i++)

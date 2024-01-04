@@ -8,207 +8,200 @@
 
 #include "dynamic_array.h"
 
-dynamic_array_t dynamic_array_initialize(
-    void**  heap_array_variable_ptr,
-    size_t array_length_per_item,
-    size_t uniform_item_size,
-    bool   loopback_search_method,
-    void(*free_func)(void*),
-    void*(*malloc_func)(size_t),
-    void*(*realloc_func)(void*,size_t)
-){
-    dynamic_array_t darray = {}; //zeros the struct
-    darray.array_ptr = heap_array_variable_ptr; //pointer to user's variable that contains the array
-    darray.array = *darray.array_ptr; //actual array pointer
-    darray.length = array_length_per_item;
-    darray.mem_size = uniform_item_size;
-    darray.loopback = loopback_search_method;
-    darray.free = (free_func)?free_func:free;
-    darray.malloc = (malloc_func)?malloc_func:malloc;
-    darray.realloc = (realloc_func)?realloc_func:realloc;
-    return darray;
+//#define DA_TRACE(da, msg, pos) printf("%s (%lld):\n--capacity: %lu\n--length: %lu\n--array: %p\n\n", msg, pos, da->capacity, da->length, da->array)
+
+static inline void da_free(dynamic_array_t* da, void* mem)
+{
+    if(da->free) da->free(mem);
+    else DYNAMIC_ARRAY_DEFAULT_FREE(mem);
 }
 
-bool dynamic_array_is_item_available(dynamic_array_t* darray)
+static inline void* da_malloc(dynamic_array_t* da, size_t size)
 {
-    return darray->length > 0 && darray->position < darray->length;
+    if(da->malloc) return da->malloc(size);
+    else return DYNAMIC_ARRAY_DEFAULT_MALLOC(size);
 }
 
-static size_t get_position(dynamic_array_t* darray, int location)
+static inline void* da_realloc(dynamic_array_t* da, void* mem, size_t size)
 {
-    long long new_position = (long long)darray->position + location;
+    if(da->realloc) return da->realloc(mem, size);
+    else return DYNAMIC_ARRAY_DEFAULT_REALLOC(mem, size);
+}
 
-    if(new_position >= darray->length)
+static inline size_t da_get_length_per_alloc(dynamic_array_t* da)
+{
+    if(da->length_per_alloc) {
+        if(da->length_per_alloc >= DYNAMIC_ARRAY_MIN_LENGTH_PER_ALLOC)
+            return da->length_per_alloc;
+        return DYNAMIC_ARRAY_MIN_LENGTH_PER_ALLOC;
+    }
+    return DYNAMIC_ARRAY_DEFAULT_LENGTH_PER_ALLOC;
+}
+
+static inline void da_update_user_var(dynamic_array_t* da)
+{
+    if(da->user_array_var)
     {
-        if(darray->loopback)
-        {
-            return new_position % darray->length;
-        }
-        else
-        {
-            if(darray->length)
-            {
-                return darray->length - 1;
-            }
-            return 0;
-        }
+        da->user_array_var[0] = da->array;
+    }
+}
+
+static inline void da_resize(dynamic_array_t* da)
+{
+    da->array = da_realloc(da, da->array, da->capacity * da->mem_size);
+    da_update_user_var(da);
+}
+
+static inline void da_init_capacity(dynamic_array_t* da)
+{
+    da->capacity = 
+        da->length + 
+        (da->length % da_get_length_per_alloc(da)) +
+        da_get_length_per_alloc(da);
+    
+    da_resize(da);
+}
+
+static inline void da_update_capacity(dynamic_array_t* da)
+{
+    size_t dif = da->capacity - da->length;
+    if(dif <= DYNAMIC_ARRAY_MIN_LENGTH_PER_ALLOC)
+    {
+        da->capacity += da_get_length_per_alloc(da);
+        da_resize(da);
     }
     else
-    if(new_position < 0)
+    if(dif >= (da_get_length_per_alloc(da) * 2))
     {
-        if(darray->loopback)
-        {
-            if(darray->length)
-            {
-                return darray->length + new_position;
-            }
-            else
-            {
-                return 0;
-            }
-        }
-        else
-        {
-            return 0;
-        }
-    }
-    return (size_t)new_position;
-}
-
-void* dynamic_array_get_item(dynamic_array_t* darray, int location, void* ret_item)
-{
-    const size_t index = get_position(darray, location);
-    void* item = darray->array + (index * darray->mem_size);
-    if(ret_item) memcpy(ret_item, item, darray->mem_size);
-    return item;
-}
-
-void dynamic_array_delete_item(dynamic_array_t* darray, int location, void* ret_deleted)
-{
-    //save the position to be deleted
-    size_t previous_position = darray->position;
-    size_t delete_position = get_position(darray, location);
-    
-    //optionally save the deleted item
-    if(ret_deleted)
-    {
-        void* deleted_item = dynamic_array_get_item(darray, location, NULL);
-        memcpy(ret_deleted, deleted_item, darray->mem_size);
-    }
-    
-    //loop through all positions and update the items
-    for(size_t i = delete_position; i < darray->length - 1; i++)
-    {
-        darray->position = i;
-        void* current_item = dynamic_array_get_item(darray, 0, NULL);
-        void* next_item    = dynamic_array_get_item(darray, 0 + 1, NULL);
-        memcpy(current_item, next_item, darray->mem_size);
-    }
-    
-    //reset the current position
-    darray->position = previous_position;
-
-    //reduce array
-    if(darray->length)
-    {
-        darray->length --;
-        if(darray->length)
-        {
-            assert(darray->realloc);
-            darray->array = darray->realloc(darray->array, darray->mem_size * darray->length);
-            darray->array_ptr[0] = darray->array; //update user's variable with new address
-        }
-        else
-        {
-            assert(darray->free);
-            darray->free(darray->array);
-            darray->array_ptr[0] = 0; //update user's variable with new address
-        }
+        da->capacity -= da_get_length_per_alloc(da);
+        da_resize(da);
     }
 }
 
-size_t dynamic_array_append_item(dynamic_array_t* darray, void* item)
+static inline size_t da_get_position(dynamic_array_t* da, long long position)
 {
-    //extend the array
-    darray->length ++;
-    darray->array = darray->realloc(darray->array, darray->mem_size * darray->length);
-    darray->array_ptr[0] = darray->array;
-    //add item to position
-    memcpy(darray->array + (darray->mem_size * (darray->length - 1)), item, darray->mem_size);
-    return darray->length - 1;
-}
-
-size_t dynamic_array_insert_item(dynamic_array_t* darray, int location, void* item)
-{
-    //extend the array
-    darray->length ++;
-    darray->array = darray->realloc(darray->array, darray->mem_size * darray->length);
-    darray->array_ptr[0] = darray->array;
-
-    //save the current position
-    size_t previous_position = darray->position;
-
-    //get the insert position
-    size_t insert_position = get_position(darray, location);
-
-    //loop through all positions and update the items
-    for(size_t i = darray->length - 1; i > insert_position; i--)
+    if(position < 0)
     {
-        darray->position = i;
-        void* current_item = dynamic_array_get_item(darray, 0, NULL);
-        void* next_item    = dynamic_array_get_item(darray, -1, NULL);
-        memcpy(current_item, next_item, darray->mem_size);
+        return (size_t)(da->length + position);
     }
-
-    //add new item
-    memcpy(darray->array + (darray->mem_size * insert_position), item, darray->mem_size);
-    
-    //reset position
-    darray->position = previous_position;
-
-    //return position item was inserted in
-    return insert_position;
-}
-
-size_t dynamic_array_set_position(dynamic_array_t* darray, size_t absolute_position)
-{
-    darray->position = absolute_position;
-    darray->position = get_position(darray, 0);
-    return darray->position;
-}
-
-size_t dynamic_array_update_item(dynamic_array_t* darray, void* item)
-{
-    void* current_item = dynamic_array_get_item(darray, 0, NULL);
-    memcpy(current_item, item, darray->mem_size);
-    return get_position(darray, 0);
-}
-
-size_t dynamic_array_shift_position(dynamic_array_t* darray, int location)
-{
-    darray->position = get_position(darray, location);
-    return darray->position;
-}
-
-bool dynamic_array_for_each(dynamic_array_t* darray, size_t* counter, void* ret_current_item)
-{
-    assert(counter);
-    if(counter[0] < darray->length)
+    else
+    if(position >= da->length)
     {
-        dynamic_array_get_item(darray, 0, ret_current_item);
-        dynamic_array_shift_position(darray, +1);
-        counter[0] ++;
+        return (size_t)(position % da->length);
+    }
+    return (size_t)position;
+}
+
+static inline void* da_get_item(dynamic_array_t* da, size_t position)
+{
+    return da->array + (da->mem_size * position);
+}
+
+static inline void da_write_item(dynamic_array_t* da, size_t position, void* item)
+{
+    void* cur_item = da_get_item(da, position);
+    memcpy(cur_item, item, da->mem_size);
+}
+
+bool dynamic_array_init(dynamic_array_t* da)
+{
+    assert(da);
+    assert(da->mem_size);
+    assert((da->length||da->array)?da->length&&da->array:1);
+
+    if(da && da->mem_size && ((da->length||da->array)?da->length&&da->array:1))
+    {
+        da_init_capacity(da); 
+
         return true;
     }
+
     return false;
 }
 
-bool dynamic_array_while_item(dynamic_array_t* darray, void* ret_current_item)
+bool dynamic_array_empty(dynamic_array_t* da)
 {
-    if(dynamic_array_is_item_available(darray))
-    {
-        dynamic_array_get_item(darray, 0, ret_current_item);
-        return true;
-    }
-    return false;
+    return da->length == 0;
 }
+
+size_t dynamic_array_length(dynamic_array_t* da)
+{
+    return da->length;
+}
+
+void* dynamic_array_array(dynamic_array_t* da)
+{
+    return da->array;
+}
+
+void dynamic_array_fit(dynamic_array_t* da)
+{
+    da->capacity = da->length;
+    da_resize(da);
+}
+
+size_t dynamic_array_resolve_position(dynamic_array_t* da, long long rel_pos)
+{
+    return da_get_position(da, rel_pos);
+}
+
+void* dynamic_array_get_item(dynamic_array_t* da, long long rel_pos, void* ret_item)
+{
+    if(false == dynamic_array_empty(da))
+    {
+        size_t position = da_get_position(da, rel_pos);
+        void* item = da_get_item(da, position);
+        if(ret_item) memcpy(ret_item, item, da->mem_size);
+        return item;
+    }
+    return NULL;
+}
+
+void* dynamic_array_delete_item(dynamic_array_t* da, long long rel_pos, void* ret_item)
+{
+    if(false == dynamic_array_empty(da))
+    {
+        size_t position = da_get_position(da, rel_pos);
+        void* item = da_get_item(da, position);
+        if(ret_item) memcpy(ret_item, item, da->mem_size);
+        for(size_t i = position; i < da->length - 1; i++)
+        {
+            void* rem = da_get_item(da, i);
+            void* new = da_get_item(da, i + 1);
+            memcpy(rem, new, da->mem_size);
+        }
+        da->length --;
+        da_update_capacity(da);
+        return item;
+    }
+    return NULL;
+}
+
+void dynamic_array_append_item(dynamic_array_t* da, void* item)
+{
+    da->length ++;
+    da_update_capacity(da);
+    da_write_item(da, da->length - 1, item);
+}
+
+void dynamic_array_insert_item(dynamic_array_t* da, long long rel_pos, void* item)
+{
+    if(da->length)
+    {
+        size_t position = da_get_position(da, rel_pos);
+        da->length ++;
+        da_update_capacity(da);
+        for(size_t i = da->length - 1; i > position; i--)
+        {
+            void* new = da_get_item(da, i - 1);
+            void* rem = da_get_item(da, i);
+            memcpy(rem, new, da->mem_size);
+        }
+        da_write_item(da, position, item);
+    }
+    else
+    {
+        dynamic_array_append_item(da, item);
+    }
+}
+

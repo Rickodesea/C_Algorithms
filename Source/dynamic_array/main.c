@@ -24,7 +24,7 @@ int main()
     
     dynamic_array_init(&darray); //this sets up the internal structures based on the input
 
-    while(false == dynamic_array_empty(&darray))
+    while(darray.length > 0)
     {
         int* item_a; //one way of getting the same item
         int  item_b; //another way to get the same item
@@ -35,7 +35,7 @@ int main()
         printf("...deleted...%d\n", item_c);
     }
 
-    while(dynamic_array_length(&darray) < 10)
+    while(darray.length < 10)
     {
         int item = rand();
         dynamic_array_append_item(&darray, &item);
@@ -92,7 +92,7 @@ int main()
     }
 
     item_insert = rand();
-    printf("goto absolute position %lu and insert %d\n", dynamic_array_resolve_position(&darray, -1), item_insert);
+    printf("goto absolute position %lu and insert %d\n", dynamic_array_get_position(&darray, -1), item_insert);
     dynamic_array_insert_item(&darray, -1, &item_insert);
 
     printf("updated array:\n");
@@ -121,7 +121,7 @@ int main()
         printf("%2d# item %d\n", i, array[i]);
     }
 
-    printf("goto absolute position %lu and delete an item(s)\n", dynamic_array_resolve_position(&darray, -1));
+    printf("goto absolute position %lu and delete an item(s)\n", dynamic_array_get_position(&darray, -1));
     dynamic_array_delete_item(&darray, -1, NULL);
 
     printf("updated array:\n");

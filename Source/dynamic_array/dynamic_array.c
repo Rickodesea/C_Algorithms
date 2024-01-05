@@ -119,35 +119,20 @@ bool dynamic_array_init(dynamic_array_t* da)
     return false;
 }
 
-bool dynamic_array_empty(dynamic_array_t* da)
-{
-    return da->length == 0;
-}
-
-size_t dynamic_array_length(dynamic_array_t* da)
-{
-    return da->length;
-}
-
-void* dynamic_array_array(dynamic_array_t* da)
-{
-    return da->array;
-}
-
 void dynamic_array_fit(dynamic_array_t* da)
 {
     da->capacity = da->length;
     da_resize(da);
 }
 
-size_t dynamic_array_resolve_position(dynamic_array_t* da, long long rel_pos)
+size_t dynamic_array_get_position(dynamic_array_t* da, long long rel_pos)
 {
     return da_get_position(da, rel_pos);
 }
 
 void* dynamic_array_get_item(dynamic_array_t* da, long long rel_pos, void* ret_item)
 {
-    if(false == dynamic_array_empty(da))
+    if(0 < da->length)
     {
         size_t position = da_get_position(da, rel_pos);
         void* item = da_get_item(da, position);
@@ -159,7 +144,7 @@ void* dynamic_array_get_item(dynamic_array_t* da, long long rel_pos, void* ret_i
 
 void* dynamic_array_delete_item(dynamic_array_t* da, long long rel_pos, void* ret_item)
 {
-    if(false == dynamic_array_empty(da))
+    if(0 < da->length)
     {
         size_t position = da_get_position(da, rel_pos);
         void* item = da_get_item(da, position);

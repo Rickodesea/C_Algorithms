@@ -38,18 +38,13 @@ static inline size_t da_get_length_per_alloc(dynamic_array_t* da)
     return DYNAMIC_ARRAY_DEFAULT_LENGTH_PER_ALLOC;
 }
 
-static inline void da_update_user_var(dynamic_array_t* da)
+static inline void da_resize(dynamic_array_t* da)
 {
+    da->array = da_realloc(da, da->array, da->capacity * da->mem_size);
     if(da->user_array_var)
     {
         da->user_array_var[0] = da->array;
     }
-}
-
-static inline void da_resize(dynamic_array_t* da)
-{
-    da->array = da_realloc(da, da->array, da->capacity * da->mem_size);
-    da_update_user_var(da);
 }
 
 static inline void da_init_capacity(dynamic_array_t* da)
@@ -75,6 +70,10 @@ static inline void da_update_capacity(dynamic_array_t* da)
     {
         da->capacity -= da_get_length_per_alloc(da);
         da_resize(da);
+    }
+    if(da->user_length_var)
+    {
+        da->user_length_var[0] = da->length;
     }
 }
 
@@ -140,6 +139,16 @@ void* dynamic_array_get_item(dynamic_array_t* da, long long rel_pos, void* ret_i
         return item;
     }
     return NULL;
+}
+
+void dynamic_array_replace_item(dynamic_array_t* da, long long rel_pos, void* item)
+{
+    if(0 < da->length)
+    {
+        size_t position = da_get_position(da, rel_pos);
+        void* cur_item = da_get_item(da, position);
+        memcpy(cur_item, item, da->mem_size);
+    }
 }
 
 void* dynamic_array_delete_item(dynamic_array_t* da, long long rel_pos, void* ret_item)

@@ -129,6 +129,20 @@ int main()
     {
         printf("%2d# item %d\n", i, array[i]);
     }
+
+    item_insert = rand();
+    printf("goto absolute position %u and replace with %d\n", 5, item_insert);
+    dynamic_array_replace_item(&darray, 5, &item_insert);
+
+    item_insert = rand();
+    printf("goto absolute position %u and replace with %d\n", 2, item_insert);
+    dynamic_array_replace_item(&darray, 2, &item_insert);
+
+    printf("updated array:\n");
+    for(int i = 0; i < darray.length; i++)
+    {
+        printf("%2d# item %d\n", i, array[i]);
+    }
 }
 
 
